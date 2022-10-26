@@ -1,0 +1,1 @@
+docker run --name gak-ngotak --platform linux/amd64 -d farizink/gak-ngotak
