@@ -13,6 +13,13 @@ const getText = async () => {
                 const data = response.data;
                 value = `"*${data.content}*" - ***${data.author}***`
                 text = `"${data.content}" - ${data.author}`
+            })
+            .catch((err) => {
+                const errorMsg = "Error Status: " +  err?.response?.status + ", " + err?.response?.statusText;
+                console.log(errorMsg);
+                console.log("-------------------------------");
+                text = errorMsg
+                value = errorMsg
             });
     } else {
         const randomSentences = process.env.RANDOM_SENTENCES.split('|');
