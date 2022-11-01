@@ -8,7 +8,8 @@ const isEmpty = (something) => something === "" || something === null || somethi
 const getText = async () => {
     let text, value;
     if (isEmpty(process.env.RANDOM_SENTENCES)) {
-        await axios.get('https://quotable.io/random')
+        try {
+            await axios.get('https://quotable.io/random')
             .then(function (response) {
                 const data = response.data;
                 value = `"*${data.content}*" - ***${data.author}***`
@@ -21,6 +22,12 @@ const getText = async () => {
                 text = errorMsg
                 value = errorMsg
             });
+        } catch (error) {
+            const msg = "Something wrong!";
+            console.log(error.message);
+            text = msg;
+            value = msg;
+        }
     } else {
         const randomSentences = process.env.RANDOM_SENTENCES.split('|');
         text = randomSentences[Math.floor(Math.random() * randomSentences.length)];
