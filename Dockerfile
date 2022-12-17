@@ -13,11 +13,11 @@ RUN apt-get update \
     && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-khmeros fonts-kacst fonts-freefont-ttf libxss1 \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd -r pptruser && useradd -rm -g pptruser -G audio,video pptruser
+    && groupadd -r fariz && useradd -rm -g fariz -G audio,video fariz
 
-USER pptruser
+USER fariz
 
-WORKDIR /home/pptruser
+WORKDIR /home/fariz
 
 
 ADD package.json ./
