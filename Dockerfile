@@ -1,4 +1,4 @@
-FROM node:16
+FROM node:slim
 
 LABEL maintainer "farizink <nizaralfariziakbar10@gmail.com>"
 

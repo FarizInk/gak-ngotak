@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer'
 import axios from 'axios'
-import qrcode from 'qrcode-terminal'
 import * as dotenv from 'dotenv'
+import { Telegraf } from 'telegraf'
 
 dotenv.config()
 
@@ -41,9 +41,49 @@ const getText = async () => {
   };
 }
 
+const parsingQrCode = async (page, browser) => {
+  await page.setViewport({ width: 1440, height: 1080 });
+  await page.screenshot({ path: 'screenshot.png' });
+  const app = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+  await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png' })
+  await page.waitForTimeout(60000);
+}
 
-console.log("Starting...");
-(async () => {
+const doTask = async (page) => {
+  await page.waitForSelector('div[role=textbox]');
+  let count = 0;
+  while (true) {
+    count++;
+    if (count % (43200/process.env.INTERVAL) === 0) {
+      await page.type('div[role=textbox]', 't!profile');
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(2000);
+      await page.type('div[role=textbox]', 't!fishy inventory');
+      await page.keyboard.press('Enter');
+      await page.setViewport({ width: 1440, height: 1080 });
+      await page.waitForTimeout(2000);
+      await page.screenshot({ path: 'screenshot.png' });
+      await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png' })
+    } else {
+      const data = await getText();
+      await page.type('div[role=textbox]', data.value);
+      await page.keyboard.press('Enter');
+      if (process.env.DEBUG_OUTPUT === 'true') {
+        console.log("Count: " + count);
+        if (isEmpty(process.env.RANDOM_SENTENCES)) {
+          console.log("✉️ Sending Quote:");
+          console.log(data.text);
+        } else {
+          console.log("✉️ Sending Text: " + data.value);
+        }
+        console.log("-------------------------------");
+      }
+    }
+    await page.waitForTimeout(process.env.INTERVAL * 1000);
+  }
+}
+
+const puppet = async () => {
   console.log('Initial browser 🌐');
   const browser = await puppeteer.launch({
     headless: 'new',
@@ -52,83 +92,44 @@ console.log("Starting...");
       // '--window-size=1920,1080'
     ],
     // defaultViewport: {
-    //   width:1920,
-    //   height:1080
+    //   width: 1920,
+    //   height: 1080
     // }
   });
   try {
     const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36')
+    // await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36')
     page.setDefaultNavigationTimeout(60 * 1000);
     let pages = await browser.pages();
     await pages[0].close();
-    console.log("🚀 Opening Login page Discord");
-    await page.goto(`https://discord.com/login`, { waitUntil: ['load', 'networkidle0'] });
 
-    await page.waitForSelector('div[class^=qrCode_]');
-    await page.waitForTimeout(5000);
-    const qrBase64 = await page.evaluate(() => {
-      const base64 = btoa(unescape(encodeURIComponent(document.querySelector("div[class^=qrCode_]").getInnerHTML())));
-      const qrcode = 'data:image/svg+xml;base64,' + base64;
-      return qrcode;
-    });
-
-    const pageQRParser = await browser.newPage()
-    await pageQRParser.goto('https://qrcode-parser.netlify.app/', { waitUntil: ['load', 'networkidle0'] })
-    await pageQRParser.evaluate((externalVar) => {
-      document.querySelector('#image-base64').value = externalVar;
-      return null;
-    }, qrBase64);
-
-    await pageQRParser.click('#parse-image-base64');
-    await page.waitForTimeout(2000);
-    const qrValue = await pageQRParser.evaluate(async () => {
-      return await new Promise(resolve => { // <-- return the data to node.js from browser
-        resolve(document.querySelector("#content2").getInnerHTML())
-      })
-    })
-    // await pageQRParser.close();
-
-    if (qrValue === null) {
-      console.log("Something wrong while parsing QrCode 😕");
-      console.log("Convert Base64 this to image and scan manually: ")
-      console.log(qrBase64)
-      await page.waitForTimeout(15000);
-    } else {
-      console.log("Scan this barcode:");
-      qrcode.generate(qrValue);
-      console.log("You have 10 seconds to scan barcode 🙂");
-      await page.waitForTimeout(10000);
-    }
-
-    console.log("🚀 Go to channel: " + process.env.CHANNEL_URL);
-    await page.goto(process.env.CHANNEL_URL)
-    await page.waitForSelector('div[role=textbox]');
-    await page.waitForTimeout(4000);
-
-    let count = 0;
     while (true) {
-      count++;
-      const data = await getText();
-      await page.type('div[role=textbox]', data.value);
-      await page.keyboard.press('Enter');
-      console.log("Count: " + count);
-      if (process.env.DEBUG_OUTPUT === 'true') {
-        if (isEmpty(process.env.RANDOM_SENTENCES)) {
-          console.log("✉️ Sending Quote:");
-          console.log(data.text);
-        } else {
-          console.log("✉️ Sending Text: " + data.value);
-        }
+      console.log("🚀 Go to channel: " + process.env.CHANNEL_URL);
+      await page.goto(process.env.CHANNEL_URL, { waitUntil: ['load', 'networkidle0'] })
+
+      await page.waitForTimeout(4000);
+      if (await page.$('div[class^=qrCode_]') !== null) {
+        console.log('Pasing QR Code')
+        await parsingQrCode(page, browser)
+      } else if (await page.$('div[role=textbox]') !== null) {
+        console.log('Do Task')
+        await doTask(page)
       }
-      console.log("-------------------------------");
-      await page.waitForTimeout(process.env.INTERVAL * 1000);
+      console.log('restarting...')
     }
 
   } finally {
     await browser.close();
   }
-})().catch((e) => {
+}
+
+
+console.log("Starting...");
+(async () => {
+  await puppet()
+})().catch(async (e) => {
   console.log(e);
   process.exitCode = 1;
+
+  await puppet()
 });
