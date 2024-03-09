@@ -41,11 +41,10 @@ const getText = async () => {
   };
 }
 
-const parsingQrCode = async (page) => {
+const parsingQrCode = async (page, app) => {
   console.log('Pasing QR Code')
   await page.setViewport({ width: 1440, height: 1080 });
   await page.screenshot({ path: 'screenshot.png' });
-  const app = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
   await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png' })
   await page.waitForTimeout(60000);
 }
@@ -58,13 +57,12 @@ const authEmail = async (page) => {
   await page.waitForTimeout(10000);
 }
 
-const doTask = async (page) => {
+const doTask = async (page, app) => {
   await page.waitForSelector('div[role=textbox]');
   let count = 0;
   while (true) {
     count++;
-    // if (count % (43200/process.env.INTERVAL) === 0) {
-      if (count % 2 === 0) {
+    if (count % (43200/process.env.INTERVAL) === 0) {
       await page.type('div[role=textbox]', 't!profile');
       await page.keyboard.press('Enter');
       await page.waitForTimeout(2000);
@@ -95,6 +93,7 @@ const doTask = async (page) => {
 }
 
 const puppet = async () => {
+  const app = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
   console.log('Initial browser 🌐');
   const browser = await puppeteer.launch({
     headless: 'new',
@@ -120,11 +119,14 @@ const puppet = async () => {
 
       await page.waitForTimeout(4000);
       if (await page.$('div[class^=qrCode_]') !== null) {
-        // await parsingQrCode(page)
-        await authEmail(page)
+        if (process.env.AUTH_TYPE !== 'email') {
+          await parsingQrCode(page, app)
+        } else {
+          await authEmail(page)
+        }
       } else if (await page.$('div[role=textbox]') !== null) {
         console.log('Do Task')
-        await doTask(page)
+        await doTask(page, app)
       }
       console.log('restarting...')
     }
