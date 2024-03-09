@@ -41,7 +41,8 @@ const getText = async () => {
   };
 }
 
-const parsingQrCode = async (page, browser) => {
+const parsingQrCode = async (page) => {
+  console.log('Pasing QR Code')
   await page.setViewport({ width: 1440, height: 1080 });
   await page.screenshot({ path: 'screenshot.png' });
   const app = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
@@ -49,12 +50,21 @@ const parsingQrCode = async (page, browser) => {
   await page.waitForTimeout(60000);
 }
 
+const authEmail = async (page) => {
+  console.log('auth email...')
+  await page.type('input[name=email]', process.env.EMAIL);
+  await page.type('input[name=password]', process.env.PASSWORD);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(10000);
+}
+
 const doTask = async (page) => {
   await page.waitForSelector('div[role=textbox]');
   let count = 0;
   while (true) {
     count++;
-    if (count % (43200/process.env.INTERVAL) === 0) {
+    // if (count % (43200/process.env.INTERVAL) === 0) {
+      if (count % 2 === 0) {
       await page.type('div[role=textbox]', 't!profile');
       await page.keyboard.press('Enter');
       await page.waitForTimeout(2000);
@@ -64,6 +74,7 @@ const doTask = async (page) => {
       await page.waitForTimeout(2000);
       await page.screenshot({ path: 'screenshot.png' });
       await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png' })
+      console.log('ss sended, check your file!')
     } else {
       const data = await getText();
       await page.type('div[role=textbox]', data.value);
@@ -98,7 +109,7 @@ const puppet = async () => {
   });
   try {
     const page = await browser.newPage();
-    // await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36')
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36')
     page.setDefaultNavigationTimeout(60 * 1000);
     let pages = await browser.pages();
     await pages[0].close();
@@ -109,8 +120,8 @@ const puppet = async () => {
 
       await page.waitForTimeout(4000);
       if (await page.$('div[class^=qrCode_]') !== null) {
-        console.log('Pasing QR Code')
-        await parsingQrCode(page, browser)
+        // await parsingQrCode(page)
+        await authEmail(page)
       } else if (await page.$('div[role=textbox]') !== null) {
         console.log('Do Task')
         await doTask(page)
