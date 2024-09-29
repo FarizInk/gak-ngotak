@@ -45,7 +45,7 @@ const parsingQrCode = async (page, app) => {
   console.log('Pasing QR Code')
   await page.setViewport({ width: 1440, height: 1080 });
   await page.screenshot({ path: 'screenshot.png' });
-  await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png' })
+  await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png', caption: 'discord report' })
   await page.waitForTimeout(60000);
 }
 
