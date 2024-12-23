@@ -119,6 +119,10 @@ const puppet = async () => {
     }
     
   }
+
+  if (process.env.CHROME_PATH) {
+    config.executablePath = process.env.CHROME_PATH
+  }
   const browser = await puppeteer.launch(config);
 
   try {
