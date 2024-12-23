@@ -5,6 +5,7 @@ import { Telegraf } from 'telegraf'
 
 dotenv.config()
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const isEmpty = (something) => something === "" || something === null || something === undefined;
 const getText = async () => {
   let text, value;
@@ -46,7 +47,7 @@ const parsingQrCode = async (page, app) => {
   await page.setViewport({ width: 1440, height: 1080 });
   await page.screenshot({ path: 'screenshot.png' });
   await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png' })
-  await page.waitForTimeout(60000);
+  await sleep(60000);
 }
 
 const authEmail = async (page) => {
@@ -54,7 +55,7 @@ const authEmail = async (page) => {
   await page.type('input[name=email]', process.env.EMAIL);
   await page.type('input[name=password]', process.env.PASSWORD);
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(10000);
+  await sleep(10000);
 }
 
 const doTask = async (page, app) => {
@@ -65,11 +66,11 @@ const doTask = async (page, app) => {
     if (count % (43200/process.env.INTERVAL) === 0) {
       await page.type('div[role=textbox]', 't!profile');
       await page.keyboard.press('Enter');
-      await page.waitForTimeout(2000);
+      await sleep(2000);
       await page.type('div[role=textbox]', 't!fishy inventory');
       await page.keyboard.press('Enter');
       await page.setViewport({ width: 1440, height: 1080 });
-      await page.waitForTimeout(2000);
+      await sleep(2000);
       await page.screenshot({ path: 'screenshot.png' });
       await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png' })
       console.log('ss sended, check your file!')
@@ -88,24 +89,38 @@ const doTask = async (page, app) => {
         console.log("-------------------------------");
       }
     }
-    await page.waitForTimeout(process.env.INTERVAL * 1000);
+    await sleep(process.env.INTERVAL * 1000);
   }
 }
 
 const puppet = async () => {
   const app = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
   console.log('Initial browser 🌐');
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: [
-      '--no-sandbox',
-      // '--window-size=1920,1080'
-    ],
-    // defaultViewport: {
-    //   width: 1920,
-    //   height: 1080
-    // }
-  });
+  let config = {};
+  const headlessMode = process.env.HEADLESS_MODE ?? 'new'
+  if (headlessMode === "false") {
+    config = {
+      headless: false,
+      args: [
+        '--no-sandbox',
+        '--window-size=1920,1080'
+      ],
+      defaultViewport: {
+        width: 1920,
+        height: 1080
+      }
+    }
+  } else {
+    config = {
+      headless: headlessMode === "true" ? true : headlessMode,
+      args: [
+        '--no-sandbox',
+      ],
+    }
+    
+  }
+  const browser = await puppeteer.launch(config);
+
   try {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36')
@@ -117,8 +132,15 @@ const puppet = async () => {
       console.log("🚀 Go to channel: " + process.env.CHANNEL_URL);
       await page.goto(process.env.CHANNEL_URL, { waitUntil: ['load', 'networkidle0'] })
 
-      await page.waitForTimeout(4000);
-      if (await page.$('div[class^=qrCode_]') !== null) {
+      await sleep(4000);
+      await page.evaluate(() => {
+        const btn = document.querySelectorAll('button')
+        if (btn.length === 2 && btn[1].innerText === 'Continue in Browser') {
+          btn[1].click()
+        }
+      })
+      await sleep(4000);
+      if (await page.$('div[class^=qrCode_]') !== null || await page.$('input[name=email]') !== null) {
         if (process.env.AUTH_TYPE !== 'email') {
           await parsingQrCode(page, app)
         } else {
