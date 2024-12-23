@@ -1,4 +1,4 @@
-FROM node:current-alpine
+FROM node:lts-alpine
 
 LABEL maintainer="farizink <nizaralfariziakbar10@gmail.com>"
 
