@@ -1,6 +1,6 @@
-FROM node:slim
+FROM node:current-alpine
 
-LABEL maintainer "farizink <nizaralfariziakbar10@gmail.com>"
+LABEL maintainer="farizink <nizaralfariziakbar10@gmail.com>"
 
 # Install latest chrome dev package and fonts to support major charsets (Chinese, Japanese, Arabic, Hebrew, Thai and a few others)
 # Note: this installs the necessary libs to make the bundled version of Chromium that Puppeteer
@@ -26,4 +26,4 @@ RUN npm i
 
 ADD index.js ./
 
-CMD npm start
+CMD ["npm", "start"]
