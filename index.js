@@ -19,14 +19,14 @@ const getText = async () => {
         })
         .catch((err) => {
           const errorMsg = "Error Status: " + err?.response?.status + ", " + err?.response?.statusText;
-          console.log(errorMsg);
-          console.log("-------------------------------");
+          console.error(errorMsg);
+          console.error("-------------------------------");
           text = errorMsg
           value = errorMsg
         });
     } catch (error) {
       const msg = "Something wrong!";
-      console.log(error.message);
+      console.error(error.message);
       text = msg;
       value = msg;
     }
@@ -43,7 +43,7 @@ const getText = async () => {
 }
 
 const parsingQrCode = async (page, app) => {
-  console.log('Pasing QR Code')
+  console.info('Pasing QR Code')
   await page.setViewport({ width: 1440, height: 1080 });
   await page.screenshot({ path: 'screenshot.png' });
   await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png', caption: 'discord report' })
@@ -51,7 +51,7 @@ const parsingQrCode = async (page, app) => {
 }
 
 const authEmail = async (page) => {
-  console.log('auth email...')
+  console.info('auth email...')
   await page.type('input[name=email]', process.env.EMAIL);
   await page.type('input[name=password]', process.env.PASSWORD);
   await page.keyboard.press('Enter');
@@ -73,20 +73,20 @@ const doTask = async (page, app) => {
       await sleep(2000);
       await page.screenshot({ path: 'screenshot.png' });
       await app.telegram.sendPhoto(process.env.TELEGRAM_CHAT_ID, { source: './screenshot.png' })
-      console.log('ss sended, check your file!')
+      console.info('ss sended, check your file!')
     } else {
       const data = await getText();
       await page.type('div[role=textbox]', data.value);
       await page.keyboard.press('Enter');
       if (process.env.DEBUG_OUTPUT === 'true') {
-        console.log("Count: " + count);
+        console.info("Count: " + count);
         if (isEmpty(process.env.RANDOM_SENTENCES)) {
-          console.log("✉️ Sending Quote:");
-          console.log(data.text);
+          console.info("✉️ Sending Quote:");
+          console.info(data.text);
         } else {
-          console.log("✉️ Sending Text: " + data.value);
+          console.info("✉️ Sending Text: " + data.value);
         }
-        console.log("-------------------------------");
+        console.info("-------------------------------");
       }
     }
     await sleep(process.env.INTERVAL * 1000);
@@ -95,34 +95,24 @@ const doTask = async (page, app) => {
 
 const puppet = async () => {
   const app = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-  console.log('Initial browser 🌐');
-  let config = {};
+  console.info('Initial browser 🌐');
+  let config = {
+    args: [
+      '--no-sandbox',
+    ],
+    defaultViewport: null
+  };
   const headlessMode = process.env.HEADLESS_MODE ?? 'new'
   if (headlessMode === "false") {
-    config = {
-      headless: false,
-      args: [
-        '--no-sandbox',
-        '--window-size=1920,1080'
-      ],
-      defaultViewport: {
-        width: 1920,
-        height: 1080
-      }
-    }
+    config.headless = false
   } else {
-    config = {
-      headless: headlessMode === "true" ? true : headlessMode,
-      args: [
-        '--no-sandbox',
-      ],
-    }
-    
+    config.headless = headlessMode === "true" ? true : headlessMode;
   }
 
   if (process.env.CHROME_PATH) {
     config.executablePath = process.env.CHROME_PATH
   }
+  
   const browser = await puppeteer.launch(config);
 
   try {
@@ -133,7 +123,7 @@ const puppet = async () => {
     await pages[0].close();
 
     while (true) {
-      console.log("🚀 Go to channel: " + process.env.CHANNEL_URL);
+      console.info("🚀 Go to channel: " + process.env.CHANNEL_URL);
       await page.goto(process.env.CHANNEL_URL, { waitUntil: ['load', 'networkidle0'] })
 
       await sleep(4000);
@@ -151,10 +141,10 @@ const puppet = async () => {
           await authEmail(page)
         }
       } else if (await page.$('div[role=textbox]') !== null) {
-        console.log('Do Task')
+        console.info('Do Task')
         await doTask(page, app)
       }
-      console.log('restarting...')
+      console.info('restarting...')
     }
 
   } finally {
@@ -163,11 +153,11 @@ const puppet = async () => {
 }
 
 
-console.log("Starting...");
+console.info("Starting...");
 (async () => {
   await puppet()
 })().catch(async (e) => {
-  console.log(e);
+  console.error(e);
   process.exitCode = 1;
 
   await puppet()
